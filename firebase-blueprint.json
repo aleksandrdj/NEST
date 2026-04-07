@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "language": { "type": "string", "enum": ["ru", "en"] },
+        "theme": { "type": "string", "enum": ["light", "dark"] }
+      },
+      "required": ["email", "language"]
+    },
+    "Child": {
+      "title": "Child",
+      "description": "Child profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "gender": { "type": "string", "enum": ["boy", "girl", "other"] },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "birthDate", "gender", "uid"]
+    },
+    "Recommendation": {
+      "title": "Recommendation",
+      "description": "Saved clothing recommendation history",
+      "type": "object",
+      "properties": {
+        "childId": { "type": "string" },
+        "weather": {
+          "type": "object",
+          "properties": {
+            "temp": { "type": "number" },
+            "condition": { "type": "string" },
+            "humidity": { "type": "number" },
+            "wind": { "type": "number" }
+          }
+        },
+        "clothing": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "advice": { "type": "string" },
+        "confidence": { "type": "number" },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["childId", "weather", "clothing", "advice", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/children/{childId}": {
+      "schema": "Child",
+      "description": "Children profiles"
+    },
+    "/recommendations/{recId}": {
+      "schema": "Recommendation",
+      "description": "History of recommendations"
+    }
+  }
+}

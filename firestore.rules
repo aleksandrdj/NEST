@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - language: string (required, 'ru' | 'en')
+    //   - theme: string (required, 'light' | 'dark')
+    //
+    // Collection: children
+    // Fields:
+    //   - name: string (required)
+    //   - birthDate: string (required, ISO date)
+    //   - gender: string (required, 'boy' | 'girl' | 'other')
+    //   - uid: string (required, matches auth.uid)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: recommendations
+    // Fields:
+    //   - childId: string (required)
+    //   - weather: map (required)
+    //   - clothing: list (required)
+    //   - advice: string (required)
+    //   - confidence: number (required)
+    //   - uid: string (required, matches auth.uid)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDate(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}.*");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.email is string && isValidEmail(data.email) &&
+             data.language in ['ru', 'en'] &&
+             data.theme in ['light', 'dark'] &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100));
+    }
+
+    function isValidChild(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidDate(data.birthDate) &&
+             data.gender in ['boy', 'girl', 'other'] &&
+             data.uid == request.auth.uid &&
+             (request.method == 'create' ? data.createdAt == request.time : true);
+    }
+
+    function isValidRecommendation(data) {
+      return data.childId is string &&
+             data.weather is map &&
+             data.clothing is list &&
+             data.advice is string &&
+             data.advice.size() < 2000 &&
+             data.confidence is number &&
+             data.uid == request.auth.uid &&
+             (request.method == 'create' ? data.createdAt == request.time : true);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && hasOnlyAllowedFields(['email', 'displayName', 'language', 'theme']);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && hasOnlyAllowedFields(['email', 'displayName', 'language', 'theme']);
+    }
+
+    match /children/{childId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && isValidChild(request.resource.data) && hasOnlyAllowedFields(['name', 'birthDate', 'gender', 'uid', 'createdAt']);
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid && isValidChild(request.resource.data) && hasOnlyAllowedFields(['name', 'birthDate', 'gender', 'uid', 'createdAt']);
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    match /recommendations/{recId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && isValidRecommendation(request.resource.data) && hasOnlyAllowedFields(['childId', 'weather', 'clothing', 'advice', 'confidence', 'uid', 'createdAt']);
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid && isValidRecommendation(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

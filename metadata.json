@@ -1,0 +1,5 @@
+{
+  "name": "Nest - Care Tech for Parents",
+  "description": "A supportive assistant for parents that translates weather data into simple clothing recommendations for their children, reducing anxiety and cognitive load.",
+  "requestFramePermissions": ["geolocation"]
+}
